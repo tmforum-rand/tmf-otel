@@ -1,7 +1,6 @@
 name: Fetch API descriptions
 
 on:
-  - push
   - workflow_dispatch
 
 permissions:

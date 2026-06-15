@@ -1,5 +1,6 @@
 name: Fetch component specifications
-on: [push, workflow_dispatch]
+on: 
+  - workflow_dispatch
 env:
   COMPONENT_FILTER: >-
     TMFC036 TMFC023 TMFC029 TMFC001 TMFC005 TMFC002
@@ -36,4 +37,3 @@ jobs:
           git add components/
           git diff --staged --quiet || git commit -m "Update component specifications"
           git push
-      - run: echo "🍏 This job's status is ${{ job.status }}."
