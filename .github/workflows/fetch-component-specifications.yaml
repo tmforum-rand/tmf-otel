@@ -1,0 +1,43 @@
+name: Fetch component specifications
+on: [push, workflow_dispatch]
+env:
+  COMPONENT_FILTER: >-
+    TMFC036 TMFC023 TMFC029 TMFC001 TMFC005 TMFC002
+    TMFC043 TMFC010 TMFC012 TMFC011 TMFC006 TMFC008
+    TMFC007 TMFC046
+jobs:
+  fetch-component-specifications:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v6
+      - run: echo "Get the components repo"
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          repository: 'tmforum-rand/TMForum-ODA-Ready-for-publication'
+          ref: v1.0.0
+          path: tmf-source
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - name: Copy specification files into components/
+        run: |
+          for component in $COMPONENT_FILTER; do
+            src="tmf-source/$component/specification"
+            if [ -d "$src" ]; then
+              cp "$src"/* components/
+            fi
+          done
+      - name: Commit and push specification files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add components/
+          git diff --staged --quiet || git commit -m "Update component specifications"
+          # git push
+      - run: echo "🍏 This job's status is ${{ job.status }}."
