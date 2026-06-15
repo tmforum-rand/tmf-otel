@@ -1,0 +1,72 @@
+name: Fetch API descriptions
+
+on:
+  - push
+  - workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-api-descriptions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get index
+        run: wget https://tmf-open-api-table-documents.s3.eu-west-1.amazonaws.com/Indexes/index.json -O downloaded_data.json
+
+      - name: Prepare script
+        run: |
+          cat > api_info.py << 'EOF'
+          import json
+          import re
+          import sys
+
+          with open('downloaded_data.json', 'r') as f:
+              data = json.load(f)
+
+          if 'OpenApiTable' not in data:
+              print("ERROR: No 'OpenApiTable' key found in data", file=sys.stderr)
+              sys.exit(1)
+
+          result = {}
+
+          for api, entries in data['OpenApiTable'].items():
+              if re.match(r'TMF\d+E$', api, re.IGNORECASE):
+                  print(f"DEBUG: Skipping async API {api}", file=sys.stderr)
+                  continue
+              for entry in entries:
+                  if entry.get('lifecycle_status') != 'Production':
+                      continue
+                  version = entry['version_info']
+                  for opt in entry.get('options', []):
+                      if opt['type'] == 'swagger':
+                          url = opt['download']
+                          filename = url.split('/')[-1]
+                          result[filename] = url
+                          print(f"DEBUG: {api} {version} -> {filename}", file=sys.stderr)
+                          break
+
+          print(f"DEBUG: {len(result)} production swagger files found", file=sys.stderr)
+          print(json.dumps(result))
+          EOF
+
+      - name: Find all production API swagger URLs
+        run: python api_info.py > api_urls.json
+
+      - name: Download API swagger files
+        run: |
+          mkdir -p apis
+          jq -r 'to_entries[] | "\(.value) \(.key)"' api_urls.json | while read url filename; do
+            wget -q "$url" -O "apis/$filename"
+          done
+
+      - name: Commit and push API descriptions
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apis/
+          git diff --staged --quiet || git commit -m "Update API descriptions"
+          git push
