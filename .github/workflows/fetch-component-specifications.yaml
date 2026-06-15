@@ -35,5 +35,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add components/
           git diff --staged --quiet || git commit -m "Update component specifications"
-          # git push
+          git push
       - run: echo "🍏 This job's status is ${{ job.status }}."
